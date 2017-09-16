@@ -1,0 +1,4 @@
+option('vst-libdir', type : 'string', value : '/opt/vst3/lib',
+  description : 'Directory with VST SDK3 libraries (e.g. libsdk.a, libbase.a)')
+option('vst-sdkdir', type : 'string', value : '/opt/vst3',
+  description : 'Directory with VST SDK3 headers (e.g. public.sdk/source/vst/hosting/module.h)')
