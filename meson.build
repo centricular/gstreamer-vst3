@@ -19,7 +19,8 @@ if cxx.get_id() == 'msvc'
   # If a warning is completely useless and spammy, use '/wdXXXX' to suppress it
   # If a warning is harmless but hard to fix, use '/woXXXX' so it's shown once
   # NOTE: Only add warnings here if you are sure they're spurious
-  test_cppflags = [
+  test_cppflags = []
+  msvc_args = [
       '/wd4018', # implicit signed/unsigned conversion
       '/wd4146', # unary minus on unsigned (beware INT_MIN)
       '/wd4244', # lossy type conversion (e.g. double -> int)
@@ -47,7 +48,9 @@ gstaudio_dep = dependency('gstreamer-audio-1.0', version : '>= 1.8', required : 
 
 vst_sdkdir = get_option('vst-sdkdir')
 message('Looking for VST3 SDK in directory ' + vst_sdkdir)
-if not cxx.has_header('vst/hosting/module.h', args : '-I@0@/public.sdk/source'.format(vst_sdkdir))
+if not cxx.has_header('vst/hosting/module.h',
+                      args : ['-I@0@/public.sdk/source'.format(vst_sdkdir),
+                              '-I' + vst_sdkdir])
   error('Cannot find VST3 SDK')
 endif
 if not cxx.has_header('pluginterfaces/vst/ivstaudioprocessor.h', args : '-I@0@'.format(vst_sdkdir))
@@ -100,9 +103,9 @@ else
   vst_cpp_args = ['-DDEVELOPMENT']
 endif
 
-libbase_dep = cxx.find_library('libbase', required : true,
+libbase_dep = cxx.find_library('base', required : true,
   dirs : [get_option('vst-libdir')])
-libsdk_dep = cxx.find_library('libsdk', required : true,
+libsdk_dep = cxx.find_library('sdk', required : true,
   dirs : [get_option('vst-libdir')])
 
 gstvst3 = library('gstvst3',
