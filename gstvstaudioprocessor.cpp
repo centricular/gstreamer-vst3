@@ -93,19 +93,19 @@ public:
 
   DECLARE_FUNKNOWN_METHODS
 
-  tresult beginEdit(Vst::ParamID id) override {
+  tresult PLUGIN_API beginEdit(Vst::ParamID id) override {
     GST_FIXME_OBJECT(processor, "beginEdit not implemented");
     return kNotImplemented;
   }
-  tresult performEdit(Vst::ParamID id, Vst::ParamValue valueNormalized) override {
+  tresult PLUGIN_API performEdit(Vst::ParamID id, Vst::ParamValue valueNormalized) override {
     GST_FIXME_OBJECT(processor, "performEdit not implemented");
     return kNotImplemented;
   }
-  tresult endEdit(Vst::ParamID id) override {
+  tresult PLUGIN_API endEdit(Vst::ParamID id) override {
     GST_FIXME_OBJECT(processor, "endEdit not implemented");
     return kNotImplemented;
   }
-  tresult restartComponent(int32 flags) override {
+  tresult PLUGIN_API restartComponent(int32 flags) override {
     // TODO: Maybe want to do something with the other ones?
     GST_DEBUG_OBJECT(processor, "restartComponent(0x%08x)", flags);
 
