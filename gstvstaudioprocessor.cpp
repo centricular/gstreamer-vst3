@@ -439,7 +439,7 @@ gst_vst_audio_processor_sub_set_property (GObject * object,
     if (!self->parameter_changes)
       self->parameter_changes = new Vst::ParameterChanges();
 
-    gint idx = 0;
+    Steinberg::int32 idx = 0;
     auto queue = self->parameter_changes->addParameterData(property->param_id, idx);
     auto value = self->edit_controller->plainParamToNormalized(property->param_id,
         self->parameter_values[property_id - 1]);
@@ -560,7 +560,7 @@ gst_vst_audio_processor_open(GstVstAudioProcessor *self)
     if (property->read_only)
       continue;
 
-    gint idx = 0;
+    Steinberg::int32 idx = 0;
     auto queue = self->parameter_changes->addParameterData(property->param_id, idx);
     auto value = edit_controller->plainParamToNormalized(property->param_id,
         self->parameter_values[i]);
@@ -844,7 +844,7 @@ gst_vst_audio_processor_sink_chain(GstPad * pad, GstObject * parent,
       auto point_count = queue->getPointCount();
       if (point_count > 0) {
         Vst::ParamValue value;
-        gint sample_offset = 0;
+        Steinberg::int32 sample_offset = 0;
 
         if (queue->getPoint(point_count - 1, sample_offset, value) == kResultOk) {
           GstVstAudioProcessorProperty *prop = nullptr;
