@@ -32,6 +32,12 @@
 #include <pluginterfaces/vst/ivstprocesscontext.h>
 #include <pluginterfaces/vst/ivstaudioprocessor.h>
 
+#if defined(G_OS_WIN32)
+#include <windows.h>
+#include <shlobj.h>
+#pragma comment(lib, "Shell32")
+#endif
+
 GST_DEBUG_CATEGORY_STATIC(gst_vst_audio_processor_debug);
 #define GST_CAT_DEFAULT gst_vst_audio_processor_debug
 
@@ -1137,11 +1143,51 @@ create_element_name(const gchar * prefix, const gchar * class_name)
   return element_name;
 }
 
+#if defined(__linux__) && !defined(__BIONIC__)
+static void
+register_system_dependencies(GstPlugin *plugin)
+{
+  gst_plugin_add_dependency_simple (plugin, NULL, "/usr/lib/vst3:/usr/local/lib/vst3", ".vst3",
+      (GstPluginDependencyFlags) (GST_PLUGIN_DEPENDENCY_FLAG_RECURSE |
+      GST_PLUGIN_DEPENDENCY_FLAG_FILE_NAME_IS_SUFFIX));
+  gst_plugin_add_dependency_simple (plugin, "HOME/.vst3", NULL, ".vst3",
+      (GstPluginDependencyFlags) (GST_PLUGIN_DEPENDENCY_FLAG_RECURSE |
+      GST_PLUGIN_DEPENDENCY_FLAG_FILE_NAME_IS_SUFFIX));
+}
+#elif defined(G_OS_WIN32)
+static void
+register_system_dependencies(GstPlugin *plugin)
+{
+  PWSTR wideStr {};
+  char commonpath[MAX_PATH];
+  gchar *path;
+  if (FAILED (SHGetKnownFolderPath (FOLDERID_ProgramFilesCommon, 0, NULL, &wideStr)))
+    return;
+
+  if (!WideCharToMultiByte(CP_ACP, 0, wideStr, -1, commonpath, MAX_PATH, NULL, NULL))
+    return;
+
+  path = g_build_filename (commonpath, "VST3", NULL);
+  gst_plugin_add_dependency_simple (plugin, NULL, path, ".vst3",
+      (GstPluginDependencyFlags) (GST_PLUGIN_DEPENDENCY_FLAG_RECURSE |
+      GST_PLUGIN_DEPENDENCY_FLAG_FILE_NAME_IS_SUFFIX));
+  g_free (path);
+}
+#else
+static void
+register_system_dependencies(GstPlugin *plugin)
+{
+  GST_FIXME_OBJECT (plugin, "Implement plugin dependencies support for this platform");
+}
+#endif
+
 void
 gst_vst_audio_processor_register(GstPlugin * plugin)
 {
   GST_DEBUG_CATEGORY_INIT (gst_vst_audio_processor_debug, "vst-audio-processor", 0,
       "VST Audio Processor");
+
+  register_system_dependencies(plugin);
 
   audio_processor_info_quark = g_quark_from_static_string ("gst-vst-audio-processor-info");
 
