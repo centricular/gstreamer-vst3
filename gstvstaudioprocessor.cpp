@@ -17,6 +17,11 @@
  *
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+/* For g_stat () */
+#include <glib/gstdio.h>
+
 #include "plugin.h"
 #include "gstvstaudioprocessor.h"
 
@@ -1181,9 +1186,44 @@ register_system_dependencies(GstPlugin *plugin)
 }
 #endif
 
+static void
+list_paths_with_vst3_extension (VST3::Hosting::Module::PathList &paths,
+    const gchar *path, gboolean recurse)
+{
+  GDir *dir;
+  const gchar *dirent;
+  gchar *filename;
+
+  dir = g_dir_open (path, 0, NULL);
+  if (!dir)
+    return;
+
+  while ((dirent = g_dir_read_name (dir))) {
+    GStatBuf file_status;
+
+    filename = g_build_filename (path, dirent, NULL);
+    if (g_stat (filename, &file_status) < 0) {
+      g_free (filename);
+      continue;
+    }
+
+    if (g_str_has_suffix (dirent, ".vst3"))
+      paths.push_back (filename);
+
+    if ((file_status.st_mode & S_IFDIR) && recurse)
+      list_paths_with_vst3_extension (paths, filename, recurse);
+
+    g_free (filename);
+  }
+
+  g_dir_close (dir);
+}
+
 void
 gst_vst_audio_processor_register(GstPlugin * plugin)
 {
+  const gchar *main_exe_path;
+
   GST_DEBUG_CATEGORY_INIT (gst_vst_audio_processor_debug, "vst-audio-processor", 0,
       "VST Audio Processor");
 
@@ -1192,6 +1232,29 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
   audio_processor_info_quark = g_quark_from_static_string ("gst-vst-audio-processor-info");
 
   auto paths = VST3::Hosting::Module::getModulePaths();
+
+#ifdef HAVE_GST_EXE_PATH
+  main_exe_path = gst_get_main_executable_path ();
+  if (main_exe_path) {
+    gchar *appdir = g_path_get_dirname (main_exe_path);
+    gchar *vst3_exe_path;
+#if defined(__linux__) && !defined(__BIONIC__)
+    const gchar vst3_path[] = "vst3";
+#else
+    const gchar vst3_path[] = "VST3";
+#endif
+
+    vst3_exe_path = g_build_filename (appdir, vst3_path, NULL);
+
+    GST_INFO_OBJECT (plugin, "Looking up plugins in executable path %s", vst3_exe_path);
+    list_paths_with_vst3_extension (paths, vst3_exe_path, TRUE);
+    gst_plugin_add_dependency_simple (plugin, NULL, vst3_path, ".vst3",
+        (GstPluginDependencyFlags) (GST_PLUGIN_DEPENDENCY_FLAG_RECURSE |
+        GST_PLUGIN_DEPENDENCY_FLAG_PATHS_ARE_RELATIVE_TO_EXE |
+        GST_PLUGIN_DEPENDENCY_FLAG_FILE_NAME_IS_SUFFIX));
+    g_free (vst3_exe_path);
+  }
+#endif
 
   for (auto& path: paths) {
     std::string err;

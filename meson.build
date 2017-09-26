@@ -103,6 +103,12 @@ else
   vst_cpp_args = ['-DDEVELOPMENT']
 endif
 
+if cxx.has_function('gst_get_main_executable_path',
+                  prefix: '#include <gst/gst.h>',
+                  dependencies: gst_dep)
+  vst_cpp_args += ['-DHAVE_GST_EXE_PATH']
+endif
+
 libbase_dep = cxx.find_library('base', required : true,
   dirs : [get_option('vst-libdir')])
 libsdk_dep = cxx.find_library('sdk', required : true,
