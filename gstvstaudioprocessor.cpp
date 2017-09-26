@@ -1223,6 +1223,7 @@ void
 gst_vst_audio_processor_register(GstPlugin * plugin)
 {
   const gchar *main_exe_path;
+  const gchar *paths_env_var;
 
   GST_DEBUG_CATEGORY_INIT (gst_vst_audio_processor_debug, "vst-audio-processor", 0,
       "VST Audio Processor");
@@ -1255,6 +1256,21 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
     g_free (vst3_exe_path);
   }
 #endif
+
+  paths_env_var = g_getenv ("GST_VST3_PLUGIN_PATH");
+  if (paths_env_var) {
+    GStrv path_list = g_strsplit (paths_env_var, G_SEARCHPATH_SEPARATOR_S, 0);
+    int i;
+
+    for (i = 0; path_list[i]; i++) {
+      GST_INFO_OBJECT (plugin, "Looking up plugins in env path %s", path_list[i]);
+      list_paths_with_vst3_extension (paths, path_list[i], TRUE);
+    }
+    g_strfreev (path_list);
+  }
+  gst_plugin_add_dependency_simple (plugin, "GST_VST3_PLUGIN_PATH", NULL, ".vst3",
+      (GstPluginDependencyFlags) (GST_PLUGIN_DEPENDENCY_FLAG_RECURSE |
+      GST_PLUGIN_DEPENDENCY_FLAG_FILE_NAME_IS_SUFFIX));
 
   for (auto& path: paths) {
     std::string err;
