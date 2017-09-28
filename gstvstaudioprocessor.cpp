@@ -1294,6 +1294,15 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
       GST_DEBUG("\t Class: %s, category: %s", class_info.name().c_str(),
                 class_info.category().c_str());
 
+      GTypeQuery type_query;
+      g_type_query(gst_vst_audio_processor_get_type(), &type_query);
+      auto type_name = create_type_name(type_query.type_name, class_info.name().c_str());
+
+      if (g_type_from_name (type_name)) {
+        GST_DEBUG("\t Skipping already registered %s", type_name);
+        continue;
+      }
+
       auto component = factory.createInstance<Vst::IComponent>(class_info.ID());
       if (!component) {
         GST_DEBUG("\t Failed to create instance for '%s'", class_info.name().c_str());
@@ -1500,14 +1509,10 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
       }
 
       // And finally register our sub-type
-      GTypeQuery type_query;
-      g_type_query(gst_vst_audio_processor_get_type(), &type_query);
-
       GTypeInfo type_info = { 0, };
       type_info.class_size = type_query.class_size;
       type_info.instance_size = type_query.instance_size;
       type_info.class_init = (GClassInitFunc) gst_vst_audio_processor_sub_class_init;
-      auto type_name = create_type_name(type_query.type_name, class_info.name().c_str());
 
       auto type = g_type_register_static(gst_vst_audio_processor_get_type(), type_name, &type_info, (GTypeFlags) 0);
 
