@@ -1224,19 +1224,31 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
 {
   const gchar *main_exe_path;
   const gchar *paths_env_var;
+  const gchar *search_default_paths_env_var;
+  gboolean search_default_paths = TRUE;
+  VST3::Hosting::Module::PathList paths;
 
   GST_DEBUG_CATEGORY_INIT (gst_vst_audio_processor_debug, "vst-audio-processor", 0,
       "VST Audio Processor");
+
+  search_default_paths_env_var = g_getenv("GST_VST3_SEARCH_DEFAULT_PATHS");
+  if (search_default_paths_env_var)
+    search_default_paths = g_ascii_strcasecmp(search_default_paths_env_var, "no");
+  gst_plugin_add_dependency_simple (plugin, "GST_VST3_SEARCH_DEFAULT_PATHS", NULL, NULL,
+      GST_PLUGIN_DEPENDENCY_FLAG_NONE);
+
+  GST_INFO ("Search default paths: %d", search_default_paths);
 
   register_system_dependencies(plugin);
 
   audio_processor_info_quark = g_quark_from_static_string ("gst-vst-audio-processor-info");
 
-  auto paths = VST3::Hosting::Module::getModulePaths();
+  if (search_default_paths)
+    paths = VST3::Hosting::Module::getModulePaths();
 
 #ifdef HAVE_GST_EXE_PATH
   main_exe_path = gst_get_main_executable_path ();
-  if (main_exe_path) {
+  if (main_exe_path && search_default_paths) {
     gchar *appdir = g_path_get_dirname (main_exe_path);
     gchar *vst3_exe_path;
 #if defined(__linux__) && !defined(__BIONIC__)

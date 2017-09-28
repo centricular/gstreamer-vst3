@@ -13,6 +13,18 @@ be provided to meson via `-Dvst-sdkdir=...` and `-Dvst-libdir=...`
 
 Some sample VST plugins are included in the SDK.
 
+## Environment variables
+
+This plugin will parse two environment variables for the purpose of VST3
+plugin discovery:
+
+* `GST_VST3_PLUGIN_PATH`: A colon-separated list of paths to look for plugins
+  into, eg `/home/foo:/home/bar`
+
+* `GST_VST3_SEARCH_DEFAULT_PATHS`: If set to (case-insensitive) `no`, plugins
+  will only be looked for in the paths listed in the `GST_VST3_PLUGIN_PATH`
+  environment variable. The default behaviour is to search in the default paths.
+
 ## LICENSE
 
 GStreamer and gstreamer-vst3 is licensed under the [Lesser General Public
