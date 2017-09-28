@@ -1099,9 +1099,10 @@ gst_vst_audio_processor_src_query(GstPad * pad,
   return ret;
 }
 
-static gchar *
+static std::string
 create_type_name(const gchar * parent_name, const gchar * class_name)
 {
+  std::string res;
   auto parent_name_len = strlen(parent_name);
   auto class_name_len = strlen(class_name);
   auto upper = true;
@@ -1126,12 +1127,15 @@ create_type_name(const gchar * parent_name, const gchar * class_name)
     }
   }
 
-  return typified_name;
+  res = std::string(typified_name);
+  g_free(typified_name);
+  return res;
 }
 
-static gchar *
+static std::string
 create_element_name(const gchar * prefix, const gchar * class_name)
 {
+  std::string res;
   auto prefix_len = strlen(prefix);
   auto class_name_len = strlen(class_name);
 
@@ -1145,7 +1149,9 @@ create_element_name(const gchar * prefix, const gchar * class_name)
     /* Skip all non-alnum chars */
   }
 
-  return element_name;
+  res = std::string(element_name);
+  g_free(element_name);
+  return res;
 }
 
 #if defined(__linux__) && !defined(__BIONIC__)
@@ -1310,8 +1316,8 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
       g_type_query(gst_vst_audio_processor_get_type(), &type_query);
       auto type_name = create_type_name(type_query.type_name, class_info.name().c_str());
 
-      if (g_type_from_name (type_name)) {
-        GST_DEBUG("\t Skipping already registered %s", type_name);
+      if (g_type_from_name (type_name.c_str())) {
+        GST_DEBUG("\t Skipping already registered %s", type_name.c_str());
         continue;
       }
 
@@ -1526,7 +1532,7 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
       type_info.instance_size = type_query.instance_size;
       type_info.class_init = (GClassInitFunc) gst_vst_audio_processor_sub_class_init;
 
-      auto type = g_type_register_static(gst_vst_audio_processor_get_type(), type_name, &type_info, (GTypeFlags) 0);
+      auto type = g_type_register_static(gst_vst_audio_processor_get_type(), type_name.c_str(), &type_info, (GTypeFlags) 0);
 
       auto processor_info = g_new0(GstVstAudioProcessorInfo, 1);
       processor_info->name = g_strdup(class_info.name().c_str());
@@ -1541,9 +1547,7 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
       auto element_name =
           create_element_name("vstaudioprocessor-", processor_info->name);
 
-      gst_element_register(plugin, element_name, GST_RANK_NONE, type);
-
-      g_free(element_name);
+      gst_element_register(plugin, element_name.c_str(), GST_RANK_NONE, type);
 
       edit_controller->terminate();
       component->terminate();
