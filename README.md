@@ -25,6 +25,9 @@ plugin discovery:
   will only be looked for in the paths listed in the `GST_VST3_PLUGIN_PATH`
   environment variable. The default behaviour is to search in the default paths.
 
+* `GST_VST3_BLACKLIST`: A semicolon-separated of vendor::name pairs to blacklist,
+  eg `"mda::mda Overdrive;mda::mda Bandisto"`
+
 ## LICENSE
 
 GStreamer and gstreamer-vst3 is licensed under the [Lesser General Public

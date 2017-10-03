@@ -1225,17 +1225,89 @@ list_paths_with_vst3_extension (VST3::Hosting::Module::PathList &paths,
   g_dir_close (dir);
 }
 
+static gboolean
+compare_versions (const gchar *version_str, const gchar *version_req_str)
+{
+  gchar op[3];
+  gint major = 0;
+  gint minor = 0;
+  gint subminor = 0;
+  gint subsubminor = 0;
+  gint major_req = 0;
+  gint minor_req = 0;
+  gint subminor_req = 0;
+  gint subsubminor_req = 0;
+  gint version = 0;
+  gint version_req = 0;
+  gint n_parts = sscanf(version_str, "%d.%d.%d.%d", &major, &minor, &subminor, &subsubminor);
+  gint n_parts_req = sscanf(version_req_str, "%2[<>=]%d.%d.%d.%d", op, &major_req, &minor_req, &subminor_req, &subsubminor_req);
+
+  if (n_parts > 0)
+    version += (major & 0xff) << 24;
+  if (n_parts > 1)
+    version += (minor & 0xff) << 16;
+  if (n_parts > 2)
+    version += (subminor & 0xff) << 8;
+  if (n_parts > 3)
+    version += (subsubminor & 0xff);
+
+  if (n_parts_req > 1)
+    version_req += (major_req & 0xff) << 24;
+  if (n_parts_req > 2)
+    version_req += (minor_req & 0xff) << 16;
+  if (n_parts_req > 3)
+    version_req += (subminor_req & 0xff) << 8;
+  if (n_parts_req > 4)
+    version_req += (subsubminor_req & 0xff);
+
+  if (!g_strcmp0 (op, "=="))
+    return version == version_req;
+  else if (!g_strcmp0 (op, "<="))
+    return version <= version_req;
+  else if (!g_strcmp0 (op, "<"))
+    return version < version_req;
+  else if (!g_strcmp0 (op, ">="))
+    return version >= version_req;
+  else if (!g_strcmp0 (op, ">"))
+    return version > version_req;
+  else
+    GST_WARNING ("Invalid comparison: %s", op);
+
+  return FALSE;
+}
+
+static void
+fill_default_blacklist (std::map<std::string, std::string> &blacklist)
+{
+}
+
 void
 gst_vst_audio_processor_register(GstPlugin * plugin)
 {
   const gchar *main_exe_path;
   const gchar *paths_env_var;
   const gchar *search_default_paths_env_var;
+  const gchar *blacklist_env_var;
   gboolean search_default_paths = TRUE;
   VST3::Hosting::Module::PathList paths;
+  std::map<std::string, std::string> blacklist;
 
   GST_DEBUG_CATEGORY_INIT (gst_vst_audio_processor_debug, "vst-audio-processor", 0,
       "VST Audio Processor");
+
+  blacklist_env_var = g_getenv ("GST_VST3_BLACKLIST");
+  fill_default_blacklist (blacklist);
+  if (blacklist_env_var) {
+    GStrv blacklisted = g_strsplit (blacklist_env_var, ";", 0);
+    int i;
+
+    for (i = 0; blacklisted[i]; i++) {
+      blacklist[blacklisted[i]] = "";
+    }
+    g_strfreev (blacklisted);
+  }
+  gst_plugin_add_dependency_simple (plugin, "GST_VST3_BLACKLIST", NULL, NULL,
+      GST_PLUGIN_DEPENDENCY_FLAG_NONE);
 
   search_default_paths_env_var = g_getenv("GST_VST3_SEARCH_DEFAULT_PATHS");
   if (search_default_paths_env_var)
@@ -1309,16 +1381,23 @@ gst_vst_audio_processor_register(GstPlugin * plugin)
               factory_info.email().c_str());
 
     for (auto& class_info: factory.classInfos()) {
-      GST_DEBUG("\t Class: %s, category: %s", class_info.name().c_str(),
-                class_info.category().c_str());
-
+      GST_DEBUG("\t Class: %s, category: %s, version: %s", class_info.name().c_str(),
+                class_info.category().c_str(), class_info.version().c_str());
       GTypeQuery type_query;
       g_type_query(gst_vst_audio_processor_get_type(), &type_query);
       auto type_name = create_type_name(type_query.type_name, class_info.name().c_str());
-
       if (g_type_from_name (type_name.c_str())) {
         GST_DEBUG("\t Skipping already registered %s", type_name.c_str());
         continue;
+      }
+
+      auto blacklist_search = blacklist.find(factory_info.vendor() + "::" + class_info.name());
+      if (blacklist_search != blacklist.end()) {
+        if (blacklist_search->second.empty() ||
+            compare_versions (class_info.version().c_str(), blacklist_search->second.c_str())) {
+          GST_DEBUG ("\t Skipping blacklisted %s", type_name.c_str());
+          continue;
+        }
       }
 
       auto component = factory.createInstance<Vst::IComponent>(class_info.ID());
