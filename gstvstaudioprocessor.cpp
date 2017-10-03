@@ -1279,6 +1279,7 @@ compare_versions (const gchar *version_str, const gchar *version_req_str)
 static void
 fill_default_blacklist (std::map<std::string, std::string> &blacklist)
 {
+  blacklist["MeldaProduction::MRecorder"] = "";
 }
 
 void
